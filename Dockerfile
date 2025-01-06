@@ -18,7 +18,8 @@ COPY dummy.R /usr/local/src/myscripts/dummy.R
 ## Install BiocManager to install MSstats
 RUN Rscript -e "install.packages('BiocManager', lib = '/usr/local/lib/R/site-library')" \
 && Rscript -e "BiocManager::install(version = '3.20', lib = '/usr/local/lib/R/site-library')" \
-&& Rscript -e "BiocManager::install('MSstats', version = '3.20', lib = '/usr/local/lib/R/site-library')" 
+&& Rscript -e "BiocManager::install('MSstats', version = '3.20', lib = '/usr/local/lib/R/site-library')" \ 
+&& Rscript -e "BiocManager::install('MSstatsTMT', version = '3.20', lib = '/usr/local/lib/R/site-library')" 
 
 ## change back to directory where script is located
 WORKDIR /usr/local/src/myscripts 
