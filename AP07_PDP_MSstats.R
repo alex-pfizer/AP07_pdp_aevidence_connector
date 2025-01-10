@@ -139,16 +139,55 @@ if (char_PDP_df_source == "Spectronaut") {
   ## need to hold onto the entire list_spectronaut_proposed for the groupComparison step later
   
 }
+## Building the annotation file, df_annot, from PDP output "pools_export" file.
+
+## Run == each plex per Spectrum.File .raw/fraction
+df_pools <- read.csv("./example_files_scratch/pdp00119_pools_export.tsv", header = T, sep = "\t", na.strings = c("", "NA", "NaN", "NULL", "Null", "null", "na"))
 
 ## temp
 # df_annot <- read.csv("PD_annotation.csv", header = T)
-df_annot <- read.csv("./example_files_scratch/PD_annot_Mary.csv", header = T)
+# df_annot <- read.csv("./example_files_scratch/PD_annot_Mary.csv", header = T)
+
+## This is annotation df for TMT experiments 
+## Create the start of a df_annot df to fill
+df_annot <- data.frame(
+  ## sample_channel == Channel
+  Channel = df_pools$sample_channel,
+  ## treatment/drug == Condition, needs to be sorted out below
+  Condition = rep(NA, length (df_pools$sample_channel)),
+  ## BioReplicate == df$num <- ave(df$val, df$cat, FUN = seq_along) from Condition
+  BioReplicate = rep(NA, length (df_pools$sample_channel)),
+  ## Number of technical replicates. This will be accommodated in the future.
+  TechRepMixture = rep(1, length(df_pools$sample_channel)),
+  ## Fraction == matches number of Spectrum.File
+  Fraction = rep(NA, length (df_pools$sample_channel)),
+  ## Mixture, likely is 1. This would be multiple TMT mixtures. Another case for future.
+  Mixture = rep(1, length (df_pools$sample_channel)),
+  ## Run will be matched to Spectrum.File
+  Run = rep(NA, length (df_pools$sample_channel))
+)
+## Condition. For now, we can handle by drug/treatment columns
+## if there is a value in treatment, but not in drugs, use treatment column
+df_annot$Condition <- ifelse(!is.na(df_pools$treatment) & is.na(df_pools$drug), df_pools$treatment, NA)
+## if there is a value in drugs, but not treatment, use drugs
+df_annot$Condition <- ifelse(is.na(df_pools$treatment) & !is.na(df_pools$drug), df_pools$drug, df_annot$Condition)
+## all remaining conditions should concatenate
+df_annot$Condition <- ifelse(is.na(df_annot$Condition), paste0(df_pools$treatment, ",",df_pools$drug), df_annot$Condition)
+
+## BioReplicate. We are assigning automatically based on "Condition", or "treatment" and "drug" from df_pools, but this can change if PDP has replicates entry.
+df_annot$BioReplicate <- ave(df_annot$Channel, df_annot$Condition, FUN = seq_along)
+
+## repeat this the number of times * fractions/Spectrum.File
 df_annot <- do.call("rbind", replicate(length(unique(df_raw_from_PDP$Spectrum.File)), df_annot, simplify = FALSE))
-df_annot$TechRepMixture <- 1
+## Fill in fraction number
 df_annot$Fraction <- rep(c(1:length(unique(df_raw_from_PDP$Spectrum.File))), each = length(unique(df_annot$Channel)))
+## Add Spectrum.File for each fraction, in order
 vec_spectrum_files <- unique(df_raw_from_PDP$Spectrum.File)
 vec_spectrum_files <- vec_spectrum_files[order(nchar(vec_spectrum_files), vec_spectrum_files)]
 df_annot$Run <- rep(vec_spectrum_files, each = length(unique(df_annot$Channel)))
+
+
+
 
 if (char_PDP_df_source == "PD") {
   ## Create annotations and run Converter
