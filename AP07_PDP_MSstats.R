@@ -14,8 +14,9 @@ lapply(list.of.packages, library, character.only = TRUE)
 # df_raw_from_PDP <- read.table("Report_CardioCRISPR_FullScreen_Plates1-4_DIA-30SPD.tsv", sep = "\t", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na", ""))
 ## for PD example
 # df_raw_from_PDP <- read.csv("_GIPR_Lumos_TMT6_MS3_ytp_exp61_GIPR_TEselectivity_rerunFraction5_PeptideGroups.txt", sep = "\t", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na"))
-df_raw_from_PDP <- read.csv("./example_files_scratch/FBXO22KO_PSMs_112624.csv", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na"))
-
+# df_raw_from_PDP <- read.csv("./example_files_scratch/FBXO22KO_PSMs_112624.csv", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na"))
+## a local download from Kari
+df_raw_from_PDP <- read.csv("/Users/PANOVA02/Downloads/2024_12_16_TRAF7_IP_TMT18_FINAL_all_columns_PSMs (1).txt", header = T, na.strings = "", sep = "\t")
 ## Assign a character that dictates where the sourced data is from, which dictates which converter to use. Options are "Spectronaut", "
 ## PDP SOURCE
 # char_PDP_df_source <- "Spectronaut"
@@ -43,6 +44,8 @@ if (char_PDP_df_source == "PD") {
   ## Ions.Score is needed if doing Mascot searches, which I don't think anyone is using currently
   # vec_colnames_needed <- c("Master.Protein.Accessions","Protein.Accessions", "Annotated.Sequence", "Charge", "Ions.Score", "Spectrum.File", "Quan.Info", "X..Proteins")
   vec_colnames_needed <- c("Master.Protein.Accessions","Protein.Accessions", "Annotated.Sequence", "Charge", "Spectrum.File", "Quan.Info", "X..Proteins")
+  ## Groton and Cambridge use two different PD versions. Groton == 2.4, Cambridge == 3.1. This means different columns!! Let's see if MSstatsTMT can handle File.ID. No. So we need to change the "File.ID" to "Spectrum.File". 
+  colnames(df_raw_from_PDP)[which(colnames(df_raw_from_PDP)=="File.ID")] <- "Spectrum.File"
   char_colnames_needed_regex <- c("Abundance")
   if(all(vec_colnames_needed %in% names(df_raw_from_PDP)) == FALSE | sum(grepl(char_colnames_needed_regex, colnames(df_raw_from_PDP)))==0) {
     print(
@@ -59,7 +62,7 @@ colnames(df_raw_from_PDP)
 df_raw_from_PDP <- df_raw_from_PDP[,which(colnames(df_raw_from_PDP) %in% vec_colnames_needed | grepl("Abundance", colnames(df_raw_from_PDP)))]
 
 
-#### Filtering and MSstats to X Conversion ####
+#### Filtering and MSstats to X Conversion, Annotation file ####
 ## Spectronaut specific step
 if (char_PDP_df_source == "Spectronaut") {
   ## drop rows that MSstats throws out, don't make a new df since this is prob already large
