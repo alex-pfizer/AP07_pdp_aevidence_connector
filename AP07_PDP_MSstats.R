@@ -7,19 +7,11 @@ list.of.packages <- c("MSstats", "MSstatsTMT")
 lapply(list.of.packages, library, character.only = TRUE)
 
 #### Read in data from PDP ####
-## One dataset to be passed from PDP
+## Data table to be passed from PDP
 ## PDP SOURCE
-## for Spectronaut example
-# setwd("~/Desktop")
-# df_raw_from_PDP <- read.table("Report_CardioCRISPR_FullScreen_Plates1-4_DIA-30SPD.tsv", sep = "\t", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na", ""))
-## for PD example
-# df_raw_from_PDP <- read.csv("_GIPR_Lumos_TMT6_MS3_ytp_exp61_GIPR_TEselectivity_rerunFraction5_PeptideGroups.txt", sep = "\t", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na"))
-# df_raw_from_PDP <- read.csv("./example_files_scratch/FBXO22KO_PSMs_112624.csv", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na"))
-## a local download from Kari
-df_raw_from_PDP <- read.csv("/Users/PANOVA02/Downloads/2024_12_16_TRAF7_IP_TMT18_FINAL_all_columns_PSMs (1).txt", header = T, na.strings = "", sep = "\t")
-## Assign a character that dictates where the sourced data is from, which dictates which converter to use. Options are "Spectronaut", "
+df_raw_from_PDP <- read.csv("dummy.csv", header = T, sep = "\t", na.strings = c("", "NA", "NaN", "NULL", "Null", "null", "na"))
+## Assign a character that dictates where the sourced data is from, which dictates which converter to use. Options are "Spectronaut", "PD"
 ## PDP SOURCE
-# char_PDP_df_source <- "Spectronaut"
 char_PDP_df_source <- "PD"
 
 ## Need to check that the data has the correct columns to move forward. Maybe this can be a message inside of PDP?
@@ -57,18 +49,14 @@ if (char_PDP_df_source == "PD") {
     stop()
   }
 }
-## are these actually the only columns we need? 
-colnames(df_raw_from_PDP)
-df_raw_from_PDP <- df_raw_from_PDP[,which(colnames(df_raw_from_PDP) %in% vec_colnames_needed | grepl("Abundance", colnames(df_raw_from_PDP)))]
 
-
-#### Filtering and MSstats to X Conversion, Annotation file ####
-## Spectronaut specific step
+#### Filtering and X to MSstats Format Conversion, Annotation file ####
+## Spectronaut
 if (char_PDP_df_source == "Spectronaut") {
   ## drop rows that MSstats throws out, don't make a new df since this is prob already large
   df_raw_from_PDP <- df_raw_from_PDP[which(df_raw_from_PDP$F.ExcludedFromQuantification=="False" & df_raw_from_PDP$F.FrgLossType=="noloss"),]
   ## Create annotations and run Converter
-  ## REMOVE
+  ## REMOVE after figure out df_pools
   df_annot_precursor <- unique(df_raw_from_PDP[,c("R.Condition", "R.FileName", "R.Replicate")])
   df_annot <- data.frame(
     Run = df_annot_precursor$R.FileName,
@@ -139,104 +127,53 @@ if (char_PDP_df_source == "Spectronaut") {
   ## need to hold onto the entire list_spectronaut_proposed for the groupComparison step later
   
 }
-## Building the annotation file, df_annot, from PDP output "pools_export" file.
-
-## Run == each plex per Spectrum.File .raw/fraction
-df_pools <- read.csv("./example_files_scratch/pdp00119_pools_export.tsv", header = T, sep = "\t", na.strings = c("", "NA", "NaN", "NULL", "Null", "null", "na"))
-
-## temp
-# df_annot <- read.csv("PD_annotation.csv", header = T)
-# df_annot <- read.csv("./example_files_scratch/PD_annot_Mary.csv", header = T)
-
-## This is annotation df for TMT experiments 
-## Create the start of a df_annot df to fill
-df_annot <- data.frame(
-  ## sample_channel == Channel
-  Channel = df_pools$sample_channel,
-  ## treatment/drug == Condition, needs to be sorted out below
-  Condition = rep(NA, length (df_pools$sample_channel)),
-  ## BioReplicate == df$num <- ave(df$val, df$cat, FUN = seq_along) from Condition
-  BioReplicate = rep(NA, length (df_pools$sample_channel)),
-  ## Number of technical replicates. This will be accommodated in the future.
-  TechRepMixture = rep(1, length(df_pools$sample_channel)),
-  ## Fraction == matches number of Spectrum.File
-  Fraction = rep(NA, length (df_pools$sample_channel)),
-  ## Mixture, likely is 1. This would be multiple TMT mixtures. Another case for future.
-  Mixture = rep(1, length (df_pools$sample_channel)),
-  ## Run will be matched to Spectrum.File
-  Run = rep(NA, length (df_pools$sample_channel))
-)
-## Condition. For now, we can handle by drug/treatment columns
-## if there is a value in treatment, but not in drugs, use treatment column
-df_annot$Condition <- ifelse(!is.na(df_pools$treatment) & is.na(df_pools$drug), df_pools$treatment, NA)
-## if there is a value in drugs, but not treatment, use drugs
-df_annot$Condition <- ifelse(is.na(df_pools$treatment) & !is.na(df_pools$drug), df_pools$drug, df_annot$Condition)
-## all remaining conditions should concatenate
-df_annot$Condition <- ifelse(is.na(df_annot$Condition), paste0(df_pools$treatment, ",",df_pools$drug), df_annot$Condition)
-
-## BioReplicate. We are assigning automatically based on "Condition", or "treatment" and "drug" from df_pools, but this can change if PDP has replicates entry.
-df_annot$BioReplicate <- ave(df_annot$Channel, df_annot$Condition, FUN = seq_along)
-
-## repeat this the number of times * fractions/Spectrum.File
-df_annot <- do.call("rbind", replicate(length(unique(df_raw_from_PDP$Spectrum.File)), df_annot, simplify = FALSE))
-## Fill in fraction number
-df_annot$Fraction <- rep(c(1:length(unique(df_raw_from_PDP$Spectrum.File))), each = length(unique(df_annot$Channel)))
-## Add Spectrum.File for each fraction, in order
-vec_spectrum_files <- unique(df_raw_from_PDP$Spectrum.File)
-vec_spectrum_files <- vec_spectrum_files[order(nchar(vec_spectrum_files), vec_spectrum_files)]
-df_annot$Run <- rep(vec_spectrum_files, each = length(unique(df_annot$Channel)))
-
-
-
-
+## PD TMT
 if (char_PDP_df_source == "PD") {
-  ## Create annotations and run Converter
-  # df_annot_precursor <- unique(df_raw_from_PDP[,c("R.Condition", "R.FileName", "R.Replicate")])
-  # df_annot <- data.frame(
-  #   Run = df_annot_precursor$R.FileName,
-  #   Condition = df_annot_precursor$R.Condition,
-  #   BioReplicate = df_annot_precursor$R.Replicate
-  # )
+  ## Building the annotation file, df_annot, from PDP output "pools_export" file.
+  df_pools <- read.csv("dummy.tsv", header = T, sep = "\t", na.strings = c("", "NA", "NaN", "NULL", "Null", "null", "na"))
+  ## This is annotation df for TMT experiments 
+  ## Create the start of a df_annot df to fill
+  df_annot <- data.frame(
+    ## sample_channel == Channel
+    Channel = df_pools$sample_channel,
+    ## treatment/drug == Condition, needs to be sorted out below
+    Condition = rep(NA, length (df_pools$sample_channel)),
+    ## BioReplicate == df$num <- ave(df$val, df$cat, FUN = seq_along) from Condition
+    BioReplicate = rep(NA, length (df_pools$sample_channel)),
+    ## Number of technical replicates. This will be accommodated in the future.
+    TechRepMixture = rep(1, length(df_pools$sample_channel)),
+    ## Fraction == matches number of Spectrum.File
+    Fraction = rep(NA, length (df_pools$sample_channel)),
+    ## Mixture, likely is 1. This would be multiple TMT mixtures. Another case for future.
+    Mixture = rep(1, length (df_pools$sample_channel)),
+    ## Run will be matched to Spectrum.File
+    Run = rep(NA, length (df_pools$sample_channel))
+  )
+  ## Condition. For now, we can handle by drug/treatment columns
+  ## if there is a value in treatment, but not in drugs, use treatment column
+  df_annot$Condition <- ifelse(!is.na(df_pools$treatment) & is.na(df_pools$drug), df_pools$treatment, NA)
+  ## if there is a value in drugs, but not treatment, use drugs
+  df_annot$Condition <- ifelse(is.na(df_pools$treatment) & !is.na(df_pools$drug), df_pools$drug, df_annot$Condition)
+  ## all remaining conditions should concatenate
+  df_annot$Condition <- ifelse(is.na(df_annot$Condition), paste0(df_pools$treatment, ",",df_pools$drug), df_annot$Condition)
+  
+  ## BioReplicate. We are assigning automatically based on "Condition", or "treatment" and "drug" from df_pools, but this can change if PDP has replicates entry.
+  df_annot$BioReplicate <- ave(df_annot$Channel, df_annot$Condition, FUN = seq_along)
+  ## repeat this the number of times * fractions/Spectrum.File
+  df_annot <- do.call("rbind", replicate(length(unique(df_raw_from_PDP$Spectrum.File)), df_annot, simplify = FALSE))
+  ## Fill in fraction number
+  df_annot$Fraction <- rep(c(1:length(unique(df_raw_from_PDP$Spectrum.File))), each = length(unique(df_annot$Channel)))
+  ## Add Spectrum.File for each fraction, in order
+  vec_spectrum_files <- unique(df_raw_from_PDP$Spectrum.File)
+  vec_spectrum_files <- vec_spectrum_files[order(nchar(vec_spectrum_files), vec_spectrum_files)]
+  df_annot$Run <- rep(vec_spectrum_files, each = length(unique(df_annot$Channel)))
   ## save memory
   df_annot_precursor <- NULL
   ## Run the MSstats converter. "Master.Protein.Accessions" is used for "ProteinName". "Sequence" and "Modifications" are used for "PeptideSequence". "Charge"
   list_quant <- MSstatsTMT::PDtoMSstatsTMTFormat(input = df_raw_from_PDP, annotation = df_annot)
   ## save memory
   df_raw_from_PDP <- NULL
-  ## Run dataProcess step, "actual math" as Liang says
-  ## If running Mac/Linux, can use multiple cores. Leave this commented out for now.
-  # if (.Platform$OS.type=="unix") {
-  #   spectronaut_proposed_30 <- MSstats::dataProcess(quant_30, 
-  #                                                   normalization = 'EQUALIZEMEDIANS',
-  #                                                   summaryMethod = "TMP",
-  #                                                   # cutoffCensored = "minFeature",
-  #                                                   censoredInt = "0",
-  #                                                   ## suggested by Devon Kohler for large datasets
-  #                                                   MBimpute = FALSE,
-  #                                                   ## for DIA datasets, use topN
-  #                                                   featureSubset = "topN",
-  #                                                   ## for DIA datasets, use topN
-  #                                                   n_top_feature = 20,
-  #                                                   ## for MacOS or Linux, can assign multiple cores
-  #                                                   numberOfCores = 4,
-  #                                                   maxQuantileforCensored = 0.999)
-  # }
-  # if (.Platform$OS.type=="windows") {
-  #   spectronaut_proposed_30 <- MSstats::dataProcess(quant_30, 
-  #                                                   normalization = 'EQUALIZEMEDIANS',
-  #                                                   summaryMethod = "TMP",
-  #                                                   # cutoffCensored = "minFeature",
-  #                                                   censoredInt = "0",
-  #                                                   ## suggested by Devon Kohler for large datasets
-  #                                                   MBimpute = FALSE,
-  #                                                   ## for DIA datasets, use topN
-  #                                                   featureSubset = "topN",
-  #                                                   ## for DIA datasets, use topN
-  #                                                   n_top_feature = 20,
-  #                                                   ## for MacOS or Linux, can assign multiple cores
-  #                                                   # numberOfCores = 4,
-  #                                                   maxQuantileforCensored = 0.999)
-  # }
+
   ## dataProcess step with the output from the converter
   list_PD_proposed <- MSstatsTMT::proteinSummarization(list_quant,
                                                        method = "msstats",
@@ -246,10 +183,12 @@ if (char_PDP_df_source == "PD") {
   list_quant <- NULL
   ## need to hold onto the entire list_spectronaut_proposed for the groupComparison step later
   
+  ## some PD TMT plots. Might be useful integration eventually.
+  # dataProcessPlotsTMT(data = list_PD_proposed, type = "QCplot", which.Protein = "allonly", width = 21, height = 7)
+  ## This is nice for peptide level analysis!
+  # dataProcessPlotsTMT(data = list_PD_proposed, type = "ProfilePlot", which.Protein = 1, width = 21, height = 7)
 }
-# dataProcessPlotsTMT(data = list_PD_proposed, type = "QCplot", which.Protein = "allonly", width = 21, height = 7)
-## This is nice for peptide level analysis!
-# dataProcessPlotsTMT(data = list_PD_proposed, type = "ProfilePlot", which.Protein = 1, width = 21, height = 7)
+
 #### Assigning Control and Experimental Groups ####
 ## This code is the same for any experiment
 ## make the controls, aka denominator
