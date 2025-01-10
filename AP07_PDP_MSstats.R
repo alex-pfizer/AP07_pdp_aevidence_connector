@@ -3,10 +3,8 @@
 
 #### Load required pacakges, MSstats ####
 list.of.packages <- c("MSstats", "MSstatsTMT")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) BiocManager::install(new.packages)
-## will give warning if not installed, but will run up until hits unknown function
-lapply(list.of.packages, require, character.only = TRUE)
+## installing instead in dockerfile specific versions
+lapply(list.of.packages, library, character.only = TRUE)
 
 #### Read in data from PDP ####
 ## One dataset to be passed from PDP
@@ -16,12 +14,12 @@ lapply(list.of.packages, require, character.only = TRUE)
 # df_raw_from_PDP <- read.table("Report_CardioCRISPR_FullScreen_Plates1-4_DIA-30SPD.tsv", sep = "\t", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na", ""))
 ## for PD example
 # df_raw_from_PDP <- read.csv("_GIPR_Lumos_TMT6_MS3_ytp_exp61_GIPR_TEselectivity_rerunFraction5_PeptideGroups.txt", sep = "\t", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na"))
-df_raw_from_PDP <- read.csv("FBXO22KO_PSMs_112624.csv", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na"))
+df_raw_from_PDP <- read.csv("./example_files_scratch/FBXO22KO_PSMs_112624.csv", header = T, na.strings = c("NA", "NULL", "Null", "null", "NaN", "Na"))
 
 ## Assign a character that dictates where the sourced data is from, which dictates which converter to use. Options are "Spectronaut", "
 ## PDP SOURCE
-char_PDP_df_source <- "Spectronaut"
-# char_PDP_df_source <- "PD"
+# char_PDP_df_source <- "Spectronaut"
+char_PDP_df_source <- "PD"
 
 ## Need to check that the data has the correct columns to move forward. Maybe this can be a message inside of PDP?
 if (char_PDP_df_source == "Spectronaut") {
@@ -30,19 +28,37 @@ if (char_PDP_df_source == "Spectronaut") {
                            "F.FrgIon", "F.FrgLossType", "F.ExcludedFromQuantification", 
                            "F.PeakArea", "EG.Qvalue")
   if(all(vec_colnames_needed %in% names(df_raw_from_PDP)) == FALSE) {
-    print(paste0("The necessary Spectronaut columns are not present in the data. Please make sure the following columns are present: ", vec_colnames_needed))
+    print(
+      paste0(
+        paste0("The necessary ProteomeDiscoverer columns are not present in the data. Please make sure the following columns are present: "), 
+        ## no gsub here since the cols in Spectronaut actually do have a "."
+        paste0(vec_colnames_needed, collapse = ", "),
+      ))
     stop()
   }
 }
 
 if (char_PDP_df_source == "PD") {
   ## Ions.Score is only for Mascot search
-  vec_colnames_needed <- c("Master.Protein.Accessions","Protein.Accessions", "Annotated.Sequence", "Charge", "Ions.Score", "Spectrum.File", "Quan.Info")
-  if(all(vec_colnames_needed %in% names(df_raw_from_PDP)) == FALSE) {
-    print(paste0("The necessary ProteomeDiscoverer columns are not present in the data. Please make sure the following columns are present: ", vec_colnames_needed))
+  ## Ions.Score is needed if doing Mascot searches, which I don't think anyone is using currently
+  # vec_colnames_needed <- c("Master.Protein.Accessions","Protein.Accessions", "Annotated.Sequence", "Charge", "Ions.Score", "Spectrum.File", "Quan.Info", "X..Proteins")
+  vec_colnames_needed <- c("Master.Protein.Accessions","Protein.Accessions", "Annotated.Sequence", "Charge", "Spectrum.File", "Quan.Info", "X..Proteins")
+  char_colnames_needed_regex <- c("Abundance")
+  if(all(vec_colnames_needed %in% names(df_raw_from_PDP)) == FALSE | sum(grepl(char_colnames_needed_regex, colnames(df_raw_from_PDP)))==0) {
+    print(
+      paste0(
+      paste0("The necessary ProteomeDiscoverer columns are not present in the data. Please make sure the following columns are present: "), 
+      paste0(gsub("\\.", " ", vec_colnames_needed), collapse = ", "),
+      paste0(", or ", char_colnames_needed_regex, "(s).")
+    ))
     stop()
   }
 }
+## are these actually the only columns we need? 
+colnames(df_raw_from_PDP)
+df_raw_from_PDP <- df_raw_from_PDP[,which(colnames(df_raw_from_PDP) %in% vec_colnames_needed | grepl("Abundance", colnames(df_raw_from_PDP)))]
+
+
 #### Filtering and MSstats to X Conversion ####
 ## Spectronaut specific step
 if (char_PDP_df_source == "Spectronaut") {
@@ -123,7 +139,7 @@ if (char_PDP_df_source == "Spectronaut") {
 
 ## temp
 # df_annot <- read.csv("PD_annotation.csv", header = T)
-df_annot <- read.csv("PD_annot_Mary.csv", header = T)
+df_annot <- read.csv("./example_files_scratch/PD_annot_Mary.csv", header = T)
 df_annot <- do.call("rbind", replicate(length(unique(df_raw_from_PDP$Spectrum.File)), df_annot, simplify = FALSE))
 df_annot$TechRepMixture <- 1
 df_annot$Fraction <- rep(c(1:length(unique(df_raw_from_PDP$Spectrum.File))), each = length(unique(df_annot$Channel)))
