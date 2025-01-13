@@ -70,7 +70,9 @@ if (char_PDP_df_source == "Spectronaut") {
                                                   annotation = df_annot,
                                                   filter_with_Qvalue = T,
                                                   qvalue_cutoff = 0.01,
-                                                  removeProtein_with1Feature = T)
+                                                  removeProtein_with1Feature = T, 
+                                                  use_log_file = TRUE,
+                                                  log_file_path = char_log_file_path)
   ## save memory
   df_raw_from_PDP <- NULL
   ## Run dataProcess step, "actual math" as Liang says
@@ -121,7 +123,9 @@ if (char_PDP_df_source == "Spectronaut") {
                                                   n_top_feature = 10,
                                                   ## for MacOS or Linux, can assign multiple cores, commented out for now
                                                   # numberOfCores = 4,
-                                                  maxQuantileforCensored = 0.999)
+                                                  maxQuantileforCensored = 0.999, 
+                                                  use_log_file = TRUE,
+                                                  log_file_path = char_log_file_path)
   ## save memory, compost
   list_quant <- NULL
   ## need to hold onto the entire list_MSstats_processed for the groupComparison step later
@@ -169,8 +173,12 @@ if (char_PDP_df_source == "PD") {
   df_annot$Run <- rep(vec_spectrum_files, each = length(unique(df_annot$Channel)))
   ## save memory
   df_annot_precursor <- NULL
+  
   ## Run the MSstats converter. "Master.Protein.Accessions" is used for "ProteinName". "Sequence" and "Modifications" are used for "PeptideSequence". "Charge"
-  list_quant <- MSstatsTMT::PDtoMSstatsTMTFormat(input = df_raw_from_PDP, annotation = df_annot)
+  list_quant <- MSstatsTMT::PDtoMSstatsTMTFormat(input = df_raw_from_PDP, 
+                                                 annotation = df_annot, 
+                                                 use_log_file = TRUE,
+                                                 log_file_path = char_log_file_path)
   ## save memory
   df_raw_from_PDP <- NULL
 
@@ -178,7 +186,9 @@ if (char_PDP_df_source == "PD") {
   list_MSstats_processed <- MSstatsTMT::proteinSummarization(list_quant,
                                                        method = "msstats",
                                                        global_norm = TRUE,
-                                                       MBimpute = FALSE)
+                                                       MBimpute = FALSE, 
+                                                       use_log_file = TRUE,
+                                                       log_file_path = char_log_file_path)
   ## save memory, compost
   list_quant <- NULL
   ## need to hold onto the entire list_MSstats_processed for the groupComparison step later
@@ -289,9 +299,8 @@ if(char_PDP_df_source=="PD") {
 ## Run the differential analysis using MSstats
 list_DA_msstats <- MSstats::groupComparison(contrast.matrix = mat_comparison_msstats, data = list_MSstats_processed)
 
-## save memory, compost
-list_MSstats_processed <- NULL
 
 ## Send back to PDP the comparison table
-df_back_to_PDP <- list_DA_msstats$ComparisonResult
+df_back_to_PDP_processed_values <- list_MSstats_processed$ProteinLevelData
+df_back_to_PDP_comparison <- list_DA_msstats$ComparisonResult
 ## PDP SOURCE
