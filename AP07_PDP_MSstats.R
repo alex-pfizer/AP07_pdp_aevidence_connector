@@ -108,7 +108,7 @@ if (char_PDP_df_source == "Spectronaut") {
   #                                                   maxQuantileforCensored = 0.999)
   # }
   ## dataProcess step with the output from the converter
-  list_spectronaut_proposed <- MSstats::dataProcess(list_quant, 
+  list_MSstats_processed <- MSstats::dataProcess(list_quant, 
                                                   normalization = 'EQUALIZEMEDIANS',
                                                   summaryMethod = "TMP",
                                                   # cutoffCensored = "minFeature",
@@ -124,7 +124,7 @@ if (char_PDP_df_source == "Spectronaut") {
                                                   maxQuantileforCensored = 0.999)
   ## save memory, compost
   list_quant <- NULL
-  ## need to hold onto the entire list_spectronaut_proposed for the groupComparison step later
+  ## need to hold onto the entire list_MSstats_processed for the groupComparison step later
   
 }
 ## PD TMT
@@ -175,73 +175,122 @@ if (char_PDP_df_source == "PD") {
   df_raw_from_PDP <- NULL
 
   ## dataProcess step with the output from the converter
-  list_PD_proposed <- MSstatsTMT::proteinSummarization(list_quant,
+  list_MSstats_processed <- MSstatsTMT::proteinSummarization(list_quant,
                                                        method = "msstats",
                                                        global_norm = TRUE,
                                                        MBimpute = FALSE)
   ## save memory, compost
   list_quant <- NULL
-  ## need to hold onto the entire list_spectronaut_proposed for the groupComparison step later
+  ## need to hold onto the entire list_MSstats_processed for the groupComparison step later
   
   ## some PD TMT plots. Might be useful integration eventually.
-  # dataProcessPlotsTMT(data = list_PD_proposed, type = "QCplot", which.Protein = "allonly", width = 21, height = 7)
+  # dataProcessPlotsTMT(data = list_MSstats_processed, type = "QCplot", which.Protein = "allonly", width = 21, height = 7)
   ## This is nice for peptide level analysis!
-  # dataProcessPlotsTMT(data = list_PD_proposed, type = "ProfilePlot", which.Protein = 1, width = 21, height = 7)
+  # dataProcessPlotsTMT(data = list_MSstats_processed, type = "ProfilePlot", which.Protein = 1, width = 21, height = 7)
 }
 
 #### Assigning Control and Experimental Groups ####
-## This code is the same for any experiment
-## make the controls, aka denominator
-## PDP SOURCE
-vec_control_conditions <- c("AAVS1_G1G2", "HPRT_G1G2", "HPRT_G1")
-## create a list to collapse at end of building, one matrix for each control condition
-## each element of this list will become a matrix, which we will rbind together at end
-list_mat_comparison_msstats <- vector("list", length= length(vec_control_conditions))
-## make the experimental conditions. These have to match what PDP assigns as vec_control_conditions, have to match what is in the dataset. For Spectronaut, this is R.Condition column. 
-vec_experimental_conditions <- levels(list_spectronaut_proposed$ProteinLevelData$GROUP)[!(levels(list_spectronaut_proposed$ProteinLevelData$GROUP) %in% vec_control_conditions)]
-## how to automate this matrix, hmm
+## This code is NOT the same between Spectronaut and PD
 
-## First create matrices that are length(vec_experimental_conditions) rows long with rownames == vec_experimental_conditions and colnames == all.
-for (i in 1:length(list_mat_comparison_msstats)) {
-  ## for now, the rownames do not contain the name of the control condition. We will replace later after grepl step. 
-  list_mat_comparison_msstats_names01 <- list(mat_comparison_rows = paste0(vec_experimental_conditions),
-                                                 mat_comparison_cols = levels(list_spectronaut_proposed$ProteinLevelData$GROUP))
-  list_mat_comparison_msstats[[i]] <- matrix(ncol = length(levels(list_spectronaut_proposed$ProteinLevelData$GROUP)),
-                                                nrow = length(vec_experimental_conditions),
-                                                dimnames = list_mat_comparison_msstats_names01)
-}
-
-## This is the major matrix creation step
-for (j in 1:length(list_mat_comparison_msstats)) {
-  for (i in 1:length(vec_experimental_conditions)) {
-    a <- vec_experimental_conditions[i]
-    b <- list_mat_comparison_msstats[[j]][i,]
-    list_mat_comparison_msstats[[j]][i,] <- as.integer(grepl(a, names(b)))
-  }
-}
-
-## Now that we have that, we can assign the controls a value of -1
-for (i in 1:length(vec_control_conditions)) {
-  list_mat_comparison_msstats[[i]][,grep(paste0("^", vec_control_conditions[i], "$"), colnames(list_mat_comparison_msstats[[i]]))] <- -1
-}
-
-## last step is to add the control to the rownames
-for (i in 1:length(list_mat_comparison_msstats)) {
-  list_mat_comparison_msstats_names02 <- paste0(vec_experimental_conditions, "-", vec_control_conditions[i])
-  rownames(list_mat_comparison_msstats[[i]]) <-  list_mat_comparison_msstats_names02
+if(char_PDP_df_source=="Spectronaut") {
+  ## make the controls, aka denominator
+  ## PDP SOURCE
+  vec_control_conditions <- c("AAVS1_G1G2", "HPRT_G1G2", "HPRT_G1")
+  ## create a list to collapse at end of building, one matrix for each control condition
+  ## each element of this list will become a matrix, which we will rbind together at end
+  list_mat_comparison_msstats <- vector("list", length= length(vec_control_conditions))
+  ## make the experimental conditions. These have to match what PDP assigns as vec_control_conditions, have to match what is in the dataset. For Spectronaut, this is R.Condition column. 
+  vec_experimental_conditions <- levels(list_MSstats_processed$ProteinLevelData$GROUP)[!(levels(list_MSstats_processed$ProteinLevelData$GROUP) %in% vec_control_conditions)]
+  ## how to automate this matrix, hmm
   
+  ## First create matrices that are length(vec_experimental_conditions) rows long with rownames == vec_experimental_conditions and colnames == all.
+  for (i in 1:length(list_mat_comparison_msstats)) {
+    ## for now, the rownames do not contain the name of the control condition. We will replace later after grepl step. 
+    list_mat_comparison_msstats_names01 <- list(mat_comparison_rows = paste0(vec_experimental_conditions),
+                                                mat_comparison_cols = levels(list_MSstats_processed$ProteinLevelData$GROUP))
+    list_mat_comparison_msstats[[i]] <- matrix(ncol = length(levels(list_MSstats_processed$ProteinLevelData$GROUP)),
+                                               nrow = length(vec_experimental_conditions),
+                                               dimnames = list_mat_comparison_msstats_names01)
+  }
+  
+  ## This is the major matrix creation step
+  for (j in 1:length(list_mat_comparison_msstats)) {
+    for (i in 1:length(vec_experimental_conditions)) {
+      a <- vec_experimental_conditions[i]
+      b <- list_mat_comparison_msstats[[j]][i,]
+      list_mat_comparison_msstats[[j]][i,] <- as.integer(grepl(a, names(b)))
+    }
+  }
+  
+  ## Now that we have that, we can assign the controls a value of -1
+  for (i in 1:length(vec_control_conditions)) {
+    list_mat_comparison_msstats[[i]][,grep(paste0("^", vec_control_conditions[i], "$"), colnames(list_mat_comparison_msstats[[i]]))] <- -1
+  }
+  
+  ## last step is to add the control to the rownames
+  for (i in 1:length(list_mat_comparison_msstats)) {
+    list_mat_comparison_msstats_names02 <- paste0(vec_experimental_conditions, "-", vec_control_conditions[i])
+    rownames(list_mat_comparison_msstats[[i]]) <-  list_mat_comparison_msstats_names02
+    
+  }
+  
+  ## Collapse into comparison matrix
+  mat_comparison_msstats <- do.call(rbind, list_mat_comparison_msstats)
+  ## BOOM
 }
-
-## Collapse into comparison matrix
-mat_comparison_msstats <- do.call(rbind, list_mat_comparison_msstats)
-## BOOM
+if(char_PDP_df_source=="PD") {
+  ## make the controls, aka denominator
+  ## PDP SOURCE
+  vec_control_conditions <- c("DMSO")
+  ## create a list to collapse at end of building, one matrix for each control condition
+  ## each element of this list will become a matrix, which we will rbind together at end
+  list_mat_comparison_msstats <- vector("list", length= length(vec_control_conditions))
+  ## make the experimental conditions. These have to match what PDP assigns as vec_control_conditions, have to match what is in the dataset. For Spectronaut, this is R.Condition column. 
+  vec_experimental_conditions <- levels(list_MSstats_processed$ProteinLevelData$Condition)[!(levels(list_MSstats_processed$ProteinLevelData$Condition) %in% vec_control_conditions)]
+  ## how to automate this matrix, hmm
+  
+  ## First create matrices that are length(vec_experimental_conditions) rows long with rownames == vec_experimental_conditions and colnames == all.
+  for (i in 1:length(list_mat_comparison_msstats)) {
+    ## for now, the rownames do not contain the name of the control condition. We will replace later after grepl step. 
+    list_mat_comparison_msstats_names01 <- list(mat_comparison_rows = paste0(vec_experimental_conditions),
+                                                mat_comparison_cols = levels(list_MSstats_processed$ProteinLevelData$Condition))
+    list_mat_comparison_msstats[[i]] <- matrix(ncol = length(levels(list_MSstats_processed$ProteinLevelData$Condition)),
+                                               nrow = length(vec_experimental_conditions),
+                                               dimnames = list_mat_comparison_msstats_names01)
+  }
+  
+  ## This is the major matrix creation step
+  for (j in 1:length(list_mat_comparison_msstats)) {
+    for (i in 1:length(vec_experimental_conditions)) {
+      a <- vec_experimental_conditions[i]
+      b <- list_mat_comparison_msstats[[j]][i,]
+      list_mat_comparison_msstats[[j]][i,] <- as.integer(grepl(a, names(b)))
+    }
+  }
+  
+  ## Now that we have that, we can assign the controls a value of -1
+  for (i in 1:length(vec_control_conditions)) {
+    list_mat_comparison_msstats[[i]][,grep(paste0("^", vec_control_conditions[i], "$"), colnames(list_mat_comparison_msstats[[i]]))] <- -1
+  }
+  
+  ## last step is to add the control to the rownames
+  for (i in 1:length(list_mat_comparison_msstats)) {
+    list_mat_comparison_msstats_names02 <- paste0(vec_experimental_conditions, "-", vec_control_conditions[i])
+    rownames(list_mat_comparison_msstats[[i]]) <-  list_mat_comparison_msstats_names02
+    
+  }
+  
+  ## Collapse into comparison matrix
+  mat_comparison_msstats <- do.call(rbind, list_mat_comparison_msstats)
+  ## BOOM
+}
 
 #### Run groupComparison, the stats portion, of MSstats ####
 ## Run the differential analysis using MSstats
-list_DA_msstats <- MSstats::groupComparison(contrast.matrix = mat_comparison_msstats, data = list_spectronaut_proposed)
+list_DA_msstats <- MSstats::groupComparison(contrast.matrix = mat_comparison_msstats, data = list_MSstats_processed)
 
 ## save memory, compost
-list_spectronaut_proposed <- NULL
+list_MSstats_processed <- NULL
 
 ## Send back to PDP the comparison table
 df_back_to_PDP <- list_DA_msstats$ComparisonResult
