@@ -10,7 +10,10 @@ RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get dist-upgrade -y \
  && apt-get install -y --no-install-suggests --no-install-recommends r-base-core \
  && apt-get update -y \
- && mkdir /usr/local/src/myscripts
+ && mkdir /usr/local/src/myscripts \
+ && mkdir /usr/local/src/log_files \
+ && mkdir /usr/local/src/pdp_input \
+ && mkdir /usr/local/src/pdp_output
 
 ## Copy executable to myscripts directory
 COPY dummy.R /usr/local/src/myscripts/dummy.R
