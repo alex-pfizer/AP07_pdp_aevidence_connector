@@ -1,6 +1,12 @@
 ## AP07 PDP MSstats connector
 ## Anywhere there is a variable assigned from PDP, have noted PDP SOURCE
 
+#### Setting global parameters ####
+## Output for log files. Make sure matches dockerfile path
+char_log_file_path <- "/usr/local/src/log_files"
+## start global log file 
+sink(file = paste0(char_log_file_path, "/current_log.txt"))
+
 #### Load required pacakges, MSstats ####
 list.of.packages <- c("MSstats", "MSstatsTMT")
 ## installing instead in dockerfile specific versions
@@ -304,3 +310,5 @@ list_DA_msstats <- MSstats::groupComparison(contrast.matrix = mat_comparison_mss
 df_back_to_PDP_processed_values <- list_MSstats_processed$ProteinLevelData
 df_back_to_PDP_comparison <- list_DA_msstats$ComparisonResult
 ## PDP SOURCE
+## close out the log file
+sink()
