@@ -232,7 +232,7 @@ if(char_PDP_df_source=="Spectronaut") {
   ## This is the major matrix creation step
   for (j in 1:length(list_mat_comparison_msstats)) {
     for (i in 1:length(vec_experimental_conditions)) {
-      a <- vec_experimental_conditions[i]
+      a <- paste0("^", vec_experimental_conditions[i], "$")
       b <- list_mat_comparison_msstats[[j]][i,]
       list_mat_comparison_msstats[[j]][i,] <- as.integer(grepl(a, names(b)))
     }
