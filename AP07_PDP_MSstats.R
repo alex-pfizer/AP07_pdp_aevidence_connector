@@ -43,7 +43,10 @@ if (char_PDP_df_source == "PD") {
   # vec_colnames_needed <- c("Master.Protein.Accessions","Protein.Accessions", "Annotated.Sequence", "Charge", "Ions.Score", "Spectrum.File", "Quan.Info", "X..Proteins")
   vec_colnames_needed <- c("Master.Protein.Accessions","Protein.Accessions", "Annotated.Sequence", "Charge", "Spectrum.File", "Quan.Info", "X..Proteins")
   ## Groton and Cambridge use two different PD versions. Groton == 2.4, Cambridge == 3.1. This means different columns!! Let's see if MSstatsTMT can handle File.ID. No. So we need to change the "File.ID" to "Spectrum.File". 
-  colnames(df_raw_from_PDP)[which(colnames(df_raw_from_PDP)=="File.ID")] <- "Spectrum.File"
+  ## Sometimes both are present, but we need Spectrum.File. 
+  if(!"Spectrum.File" %in% colnames(df_raw_from_PDP)) {
+    colnames(df_raw_from_PDP)[which(colnames(df_raw_from_PDP)=="File.ID")] <- "Spectrum.File"
+  }
   char_colnames_needed_regex <- c("Abundance")
   if(all(vec_colnames_needed %in% names(df_raw_from_PDP)) == FALSE | sum(grepl(char_colnames_needed_regex, colnames(df_raw_from_PDP)))==0) {
     print(
