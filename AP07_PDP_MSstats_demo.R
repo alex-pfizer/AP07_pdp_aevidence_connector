@@ -336,8 +336,8 @@ if(char_PDP_df_source=="PD") {
 df_back_to_PDP_processed_values <- list_MSstats_processed$ProteinLevelData
 df_back_to_PDP_comparison <- list_DA_msstats$ComparisonResult
 
-write.csv(df_back_to_PDP_processed_values, paste0(char_output_file_path, "./", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), "_processed_values.csv"))
-write.csv(df_back_to_PDP_comparison, paste0(char_output_file_path, "./", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), "_comparison.csv"))
+write.csv(df_back_to_PDP_processed_values, paste0(char_output_file_path, "/", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), "_processed_values.csv"))
+write.csv(df_back_to_PDP_comparison, paste0(char_output_file_path, "/", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), "_comparison.csv"))
 ## PDP SOURCE
 ## close out the log file
 sink()
