@@ -13,7 +13,17 @@ RUN export DEBIAN_FRONTEND=noninteractive \
  && mkdir /usr/local/src/myscripts \
  && mkdir /usr/local/src/log_files \
  && mkdir /usr/local/src/pdp_input \
- && mkdir /usr/local/src/pdp_output
+ && mkdir /usr/local/src/msstats_output
+
+## Need to allow user to define a local host PATH. This cannot happen in image build, have to execute .sh to define MY_PATH
+COPY entrypoint.sh /usr/local/src/myscripts
+
+## Run one time set up during build so file has correct permissions
+RUN chmod +x /usr/local/src/myscripts/entrypoint.sh
+
+##set entrypoint to run the script when the container starts
+ENTRYPOINT ["sh", "/usr/local/src/myscripts/entrypoint.sh"]
+## All user set MY_PATH contents should now be in /usr/local/src/pdp_input
 
 ## Copy executable to myscripts directory
 COPY dummy.R /usr/local/src/myscripts/dummy.R
