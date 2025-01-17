@@ -9,7 +9,7 @@
 
 #### Setting global parameters ####
 ## Output for log files. Make sure matches dockerfile path
-char_log_file_path <- "./pdp_input/log_files"
+char_log_file_path <- "./log_files"
 char_output_file_path <- "./msstats_output"
 ## start global log file 
 sink(file = paste0(char_log_file_path, paste0("/",  format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), "_log.txt")), split = TRUE)
@@ -22,8 +22,8 @@ lapply(list.of.packages, library, character.only = TRUE)
 #### Read in data from PDP ####
 ## Assign a character that dictates where the sourced data is from, which dictates which converter to use. Options are "Spectronaut", "PD"
 ## PDP SOURCE
-# char_PDP_df_source <- "Spectronaut"
-char_PDP_df_source <- readChar("./pdp_input/software.txt", nchars=file.info("./pdp_input/software.txt")$size)
+char_PDP_df_source <- "PD"
+# char_PDP_df_source <- readChar("./pdp_input/software.txt", nchars=file.info("./pdp_input/software.txt")$size)
 
 ## Data table to be passed from PDP
 ## PDP SOURCE
@@ -159,35 +159,38 @@ if (char_PDP_df_source == "Spectronaut") {
 ## PD TMT
 if (char_PDP_df_source == "PD") {
   ## Building the annotation file, df_annot, from PDP output "pools_export" file.
-  df_pools <- read.csv("./pdp_input/pdp00116_pools_export.tsv", header = T, sep = "\t", na.strings = c("", "NA", "NaN", "NULL", "Null", "null", "na"))
+  # df_pools <- read.csv("./pdp_input/pdp00116_pools_export.tsv", header = T, sep = "\t", na.strings = c("", "NA", "NaN", "NULL", "Null", "null", "na"))
   ## This is annotation df for TMT experiments 
   ## Create the start of a df_annot df to fill
-  df_annot <- data.frame(
-    ## sample_channel == Channel
-    Channel = df_pools$sample_channel,
-    ## treatment/drug == Condition, needs to be sorted out below
-    Condition = rep(NA, length (df_pools$sample_channel)),
-    ## BioReplicate == df$num <- ave(df$val, df$cat, FUN = seq_along) from Condition
-    BioReplicate = rep(NA, length (df_pools$sample_channel)),
-    ## Number of technical replicates. This will be accommodated in the future.
-    TechRepMixture = rep(1, length(df_pools$sample_channel)),
-    ## Fraction == matches number of Spectrum.File
-    Fraction = rep(NA, length (df_pools$sample_channel)),
-    ## Mixture, likely is 1. This would be multiple TMT mixtures. Another case for future.
-    Mixture = rep(1, length (df_pools$sample_channel)),
-    ## Run will be matched to Spectrum.File
-    Run = rep(NA, length (df_pools$sample_channel))
-  )
-  ## Condition. For now, we can handle by drug/treatment columns
-  ## if there is a value in treatment, but not in drugs, use treatment column
-  df_annot$Condition <- ifelse(!is.na(df_pools$treatment) & is.na(df_pools$drug), df_pools$treatment, NA)
-  ## if there is a value in drugs, but not treatment, use drugs
-  df_annot$Condition <- ifelse(is.na(df_pools$treatment) & !is.na(df_pools$drug), df_pools$drug, df_annot$Condition)
-  ## all remaining conditions should concatenate
-  df_annot$Condition <- ifelse(is.na(df_annot$Condition), paste0(df_pools$treatment, ",",df_pools$drug), df_annot$Condition)
-  
-  ## BioReplicate. We are assigning automatically based on "Condition", or "treatment" and "drug" from df_pools, but this can change if PDP has replicates entry.
-  df_annot$BioReplicate <- ave(df_annot$Channel, df_annot$Condition, FUN = seq_along)
+  ## This code below was for the pools file from PDP.
+  # df_annot <- data.frame(
+  #   ## sample_channel == Channel
+  #   Channel = df_pools$sample_channel,
+  #   ## treatment/drug == Condition, needs to be sorted out below
+  #   Condition = rep(NA, length (df_pools$sample_channel)),
+  #   ## BioReplicate == df$num <- ave(df$val, df$cat, FUN = seq_along) from Condition
+  #   BioReplicate = rep(NA, length (df_pools$sample_channel)),
+  #   ## Number of technical replicates. This will be accommodated in the future.
+  #   TechRepMixture = rep(1, length(df_pools$sample_channel)),
+  #   ## Fraction == matches number of Spectrum.File
+  #   Fraction = rep(NA, length (df_pools$sample_channel)),
+  #   ## Mixture, likely is 1. This would be multiple TMT mixtures. Another case for future.
+  #   Mixture = rep(1, length (df_pools$sample_channel)),
+  #   ## Run will be matched to Spectrum.File
+  #   Run = rep(NA, length (df_pools$sample_channel))
+  # )
+  # ## Condition. For now, we can handle by drug/treatment columns
+  # ## if there is a value in treatment, but not in drugs, use treatment column
+  # df_annot$Condition <- ifelse(!is.na(df_pools$treatment) & is.na(df_pools$drug), df_pools$treatment, NA)
+  # ## if there is a value in drugs, but not treatment, use drugs
+  # df_annot$Condition <- ifelse(is.na(df_pools$treatment) & !is.na(df_pools$drug), df_pools$drug, df_annot$Condition)
+  # ## all remaining conditions should concatenate
+  # df_annot$Condition <- ifelse(is.na(df_annot$Condition), paste0(df_pools$treatment, ",",df_pools$drug), df_annot$Condition)
+  # 
+  # ## BioReplicate. We are assigning automatically based on "Condition", or "treatment" and "drug" from df_pools, but this can change if PDP has replicates entry.
+  # df_annot$BioReplicate <- ave(df_annot$Channel, df_annot$Condition, FUN = seq_along)
+  ## Above code for pools file from PDP. Below is using Mary's manual file.
+  df_annot <- read.csv("./pdp_input/PD_annot_Mary.csv", header = T, na.strings = c("", "NA", "NaN", "NULL", "Null", "null", "na"))
   ## repeat this the number of times * fractions/Spectrum.File
   df_annot <- do.call("rbind", replicate(length(unique(df_raw_from_PDP$Spectrum.File)), df_annot, simplify = FALSE))
   ## Fill in fraction number
@@ -197,7 +200,7 @@ if (char_PDP_df_source == "PD") {
   vec_spectrum_files <- vec_spectrum_files[order(nchar(vec_spectrum_files), vec_spectrum_files)]
   df_annot$Run <- rep(vec_spectrum_files, each = length(unique(df_annot$Channel)))
   ## save memory
-  df_annot_precursor <- NULL
+  # df_annot_precursor <- NULL
   
   ## Run the MSstats converter. "Master.Protein.Accessions" is used for "ProteinName". "Sequence" and "Modifications" are used for "PeptideSequence". "Charge"
   list_quant <- MSstatsTMT::PDtoMSstatsTMTFormat(input = df_raw_from_PDP, 
