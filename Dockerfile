@@ -16,7 +16,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
  && mkdir /usr/local/src/msstats_output
 
 ## Need to allow user to define a local host PATH. This cannot happen in image build, have to execute .sh to define MY_PATH
-COPY entrypoint.sh /usr/local/src/myscripts
+COPY entrypoint.sh /usr/local/src/myscripts/entrypoint.sh
 
 ## Run one time set up during build so file has correct permissions
 RUN chmod +x /usr/local/src/myscripts/entrypoint.sh

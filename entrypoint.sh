@@ -1,15 +1,32 @@
+# #!/bin/sh
+
+# # Print the current directory and its contents
+# echo "Current directory: $(pwd)"
+# echo "Contents of /usr/local/src/input_pdp:"
+# ls -la /usr/local/src/input_pdp
+
+# # Check if the directory exists
+# if [ -d "/usr/local/src/input_pdp" ]; then
+#     echo "/usr/local/src/input_pdp exists."
+# else
+#     echo "/usr/local/src/input_pdp does not exist."
+# fi
+
+# # Copy the custom directory to the desired location
+# cp -r /usr/local/src/input_pdp/* /usr/local/scr/myscripts
+
+# # Execute the command passed to the container
+# exec "$@"
+
 #!/bin/sh
 
-## Check if MY_PATH is defined and exists
-if [ -z "$MY_PATH" ]; then
-    echo "MY_PATH does not exist."
-    exit 1
+# Check if the host directory is mounted
+if [ -d "/mnt/hostdir" ]; then
+  # Copy files from the mounted host directory to the container directories
+  cp -r /mnt/hostdir/* /usr/local/src/pdp_input
+else
+  echo "Host directory not mounted. Please mount the host directory to /mnt/hostdir."
 fi
 
-if [ ! -d "$MY_PATH"]; then
-    echo "The specified path does not exist: MY_PATH"
-    exit 1
-fi
-
-## Copy the files from MY_PATH to the container
-cp -r "$MY_PATH/"* /usr/local/src/pdp_input
+# Execute any additional commands passed to the container
+exec "$@"
