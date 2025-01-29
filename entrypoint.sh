@@ -1,32 +1,21 @@
-# #!/bin/sh
-
-# # Print the current directory and its contents
-# echo "Current directory: $(pwd)"
-# echo "Contents of /usr/local/src/input_pdp:"
-# ls -la /usr/local/src/input_pdp
-
-# # Check if the directory exists
-# if [ -d "/usr/local/src/input_pdp" ]; then
-#     echo "/usr/local/src/input_pdp exists."
-# else
-#     echo "/usr/local/src/input_pdp does not exist."
-# fi
-
-# # Copy the custom directory to the desired location
-# cp -r /usr/local/src/input_pdp/* /usr/local/scr/myscripts
-
-# # Execute the command passed to the container
-# exec "$@"
-
 #!/bin/sh
 
-# Check if the host directory is mounted
-if [ -d "/mnt/hostdir" ]; then
-  # Copy files from the mounted host directory to the container directories
-  cp -r /mnt/hostdir/* /usr/local/src/pdp_input
-else
-  echo "Host directory not mounted. Please mount the host directory to /mnt/hostdir."
+# Check if the environment variable MOUNT_PATH is set
+if [ -z "$MOUNT_PATH" ]; then
+  echo "MOUNT_PATH environment variable is not set. Please set it to the host directory to mount."
+  exit 1
 fi
+
+# Check if the custom directory is mounted
+if [ -d "$MOUNT_PATH" ]; then
+  # Copy files from the mounted custom directory to the container directories
+  cp -r "$MOUNT_PATH"/* /usr/local/src/pdp_input
+else
+  echo "Custom directory not mounted. Please check the path used in $MOUNT_PATH."
+fi
+
+# Run the R script
+Rscript /usr/local/src/myscripts/test.R
 
 # Execute any additional commands passed to the container
 exec "$@"

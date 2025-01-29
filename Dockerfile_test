@@ -16,25 +16,19 @@ RUN export DEBIAN_FRONTEND=noninteractive \
  && mkdir /usr/local/src/msstats_output
 
 ## Need to allow user to define a local host PATH. This cannot happen in image build, have to execute .sh to define MY_PATH
-COPY entrypoint.sh /usr/local/src/myscripts/entrypoint.sh
+COPY entrypoint_test.sh /usr/local/src/myscripts/entrypoint_test.sh
+## Copy executable to myscripts directory
+COPY test.R /usr/local/src/myscripts/test.R
 
 ## Run one time set up during build so file has correct permissions
-RUN chmod +x /usr/local/src/myscripts/entrypoint.sh
-
-##set entrypoint to run the script when the container starts
-ENTRYPOINT ["sh", "/usr/local/src/myscripts/entrypoint.sh"]
-## All user set MY_PATH contents should now be in /usr/local/src/pdp_input
-
-## Copy executable to myscripts directory
-COPY dummy.R /usr/local/src/myscripts/dummy.R
-
-## Install BiocManager to install MSstats
-RUN Rscript -e "install.packages('BiocManager', lib = '/usr/local/lib/R/site-library')" \
-&& Rscript -e "BiocManager::install(version = '3.20', lib = '/usr/local/lib/R/site-library')" \
-&& Rscript -e "BiocManager::install('MSstats', version = '3.20', lib = '/usr/local/lib/R/site-library')" \ 
-&& Rscript -e "BiocManager::install('MSstatsTMT', version = '3.20', lib = '/usr/local/lib/R/site-library')" 
+RUN chmod +x /usr/local/src/myscripts/entrypoint_test.sh
 
 ## change back to directory where script is located
 WORKDIR /usr/local/src/myscripts 
-## Run the script upon container start
-CMD ["Rscript", "dummy.R"]
+
+##set entrypoint to run the script when the container starts
+ENTRYPOINT ["sh", "/usr/local/src/myscripts/entrypoint_test.sh"]
+## All user set MY_PATH contents should now be in /usr/local/src/pdp_input
+
+
+
