@@ -10,8 +10,9 @@ fi
 if [ -d "$MOUNT_PATH" ]; then
   # Copy files from the mounted custom directory to the container directories
   cp -r "$MOUNT_PATH"/* /usr/local/src/pdp_input
-else
-  echo "Custom directory not mounted. Please check the path used in $MOUNT_PATH."
+  echo "Files have been successfully copied from $MOUNT_PATH"
+# else
+#   echo "Custom directory not mounted. Please check the path used in $MOUNT_PATH."
 fi
 
 # Run the R script

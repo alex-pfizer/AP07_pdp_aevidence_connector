@@ -21,7 +21,7 @@ RUN Rscript -e "install.packages('BiocManager', lib = '/usr/local/lib/R/site-lib
 && Rscript -e "BiocManager::install('MSstats', version = '3.20', lib = '/usr/local/lib/R/site-library')" \ 
 && Rscript -e "BiocManager::install('MSstatsTMT', version = '3.20', lib = '/usr/local/lib/R/site-library')" 
 
-## Need to allow user to define a local host PATH. This cannot happen in image build, have to execute .sh to define MY_PATH
+## Need to allow user to define a local host PATH. This cannot happen in image build, have to execute .sh to define MOUNT_PATH
 COPY entrypoint.sh /usr/local/src/myscripts/entrypoint.sh
 ## Copy executable to myscripts directory
 COPY test.R /usr/local/src/myscripts/test.R
@@ -34,4 +34,4 @@ WORKDIR /usr/local/src/myscripts
 
 ##set entrypoint to run the script when the container starts
 ENTRYPOINT ["sh", "/usr/local/src/myscripts/entrypoint.sh"]
-## All user set MY_PATH contents should now be in /usr/local/src/pdp_input
+## All user set MOUNT_PATH contents should now be in /usr/local/src/pdp_input
